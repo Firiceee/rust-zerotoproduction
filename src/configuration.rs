@@ -1,0 +1,48 @@
+use config;
+use serde::Deserialize;
+
+#[derive(Deserialize, Debug)]
+pub struct Settings {
+    pub database: DatabaseSettings,
+    pub application_port: u16,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct DatabaseSettings {
+    pub username: String,
+    pub password: String,
+    pub port: u16,
+    pub host: String,
+    pub database_name: String,
+}
+
+impl DatabaseSettings {
+    pub fn connection_string(&self) -> String {
+        format!(
+            "postgres://{}:{}@{}:{}/{}",
+            self.username, self.password, self.host, self.port, self.database_name
+        )
+    }
+
+    pub fn connection_string_without_db(&self) -> String {
+        format!(
+            "postgres://{}:{}@{}:{}",
+            self.username, self.password, self.host, self.port
+        )
+    }
+}
+
+pub fn get_configuration() -> Result<Settings, config::ConfigError> {
+    let base_path = std::env::current_dir().expect("Failed to determine the current directory");
+    let configuration_directory = base_path.join("configuration");
+
+    // Initialise our configuration reader
+    let settings = config::Config::builder()
+        // Add configuration values from a base file
+        .add_source(config::File::from(
+            configuration_directory.join("configuration"),
+        ))
+        // Add in settings from environment variables (with a prefix of APP and separated by __)
+        .build()?;
+    settings.try_deserialize::<Settings>()
+}
